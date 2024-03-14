@@ -13,6 +13,7 @@ class Transaction:
         self.nonce = nonce
         self.transaction_id = self.calculate_transaction_id()
         self.signature = None
+        #self.signature = self.sign_transaction(sender_private_key)
 
     def sign_transaction(self, sender_private_key):
         signer = pkcs1_15.new(RSA.import_key(sender_private_key))
