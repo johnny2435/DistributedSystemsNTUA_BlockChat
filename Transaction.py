@@ -29,9 +29,20 @@ class Transaction:
         }
         return hashlib.sha256(str(data).encode()).hexdigest()
     
-    def verify_transaction(self, public_key):
-        verifier = pkcs1_15.new(public_key)
-        h = SHA256.new(str(self.transaction_id).encode())
+    def verify_signature(self):
+        """
+        Verify the signature of a transaction using the sender's public key.
+
+        Args:
+        - transaction_id: The hash of the transaction to be verified.
+        - signature: The signature to be verified.
+        - sender_public_key: The public key of the sender.
+
+        Returns:
+        - True if the signature is valid, False otherwise.
+        """
+        verifier = pkcs1_15.new(RSA.import_key(self.sender_address))
+        h = SHA256.new(self.transaction_id)
         try:
             verifier.verify(h, self.signature)
             return True
