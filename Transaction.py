@@ -1,12 +1,12 @@
-import hashlib
 from Crypto.Signature import pkcs1_15 # provided by pycryptodome
+from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA 
 from Crypto.Hash import SHA256
 
 class Transaction:
     def __init__(self, sender_address, receiver_address, type_of_transaction, amount, \
                  message, nonce):
-        self.sender_address = sender_address
+        self.sender_address = sender_address #sender_public_key
         self.receiver_address = receiver_address
         self.type_of_transaction = type_of_transaction
         self.amount = amount
@@ -42,22 +42,32 @@ class Transaction:
         hash =  SHA256.new(transaction_bytes)
         return hash#.hexdigest()
     
+    #Verify the transaction, returns True if the verification is successful, otherwise False
+    def verify_transaction(self):
+        try:
+            pub_key = RSA.import_key(self.sender_address)
+            verifier = PKCS1_v1_5.new(pub_key)
+            return verifier.verify(self.transaction_id, self.signature)
+        except (ValueError, TypeError) as e:
+            print(f"Error verifying transaction: {e}")
+            return False
+    
 ############## TESTING GROUND ##############
+# Placeholder public-private key pair
+key = RSA.generate(2048)
+private_key = key.export_key()
+public_key = key.publickey().export_key()
+
 # Create a sample transaction
-sender_address = "sender_public_address"
+sender_address = public_key
 receiver_address = "receiver_public_address"
 type_of_transaction = "coins"
 amount = 10
 message = "Test transaction"
 nonce = 1
 
-# Placeholder private key
-key = RSA.generate(2048)
-private_key = key.export_key()
-public_key = key.publickey().export_key()
-
 # Create a Transaction object
-transaction = Transaction(sender_address, receiver_address, type_of_transaction, amount, message, nonce)
+transaction = Transaction(sender_address.decode(), receiver_address, type_of_transaction, amount, message, nonce)
 
 # Test the to_dict method
 print("Transaction data dictionary:")
@@ -75,3 +85,8 @@ transaction.sign_transaction(private_key)
 # Print the transaction signature
 print("Transaction signature:")
 print(transaction.signature)
+
+# Verify the transaction
+print("Verifying transaction signature:")
+verification_result = transaction.verify_transaction()
+print("Verification result:", verification_result)
