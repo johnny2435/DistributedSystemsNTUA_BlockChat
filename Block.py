@@ -18,11 +18,10 @@ class Block:
         return hashlib.sha256(str(block_json).encode()).hexdigest()
     
     def add_transaction(self, transaction):
-        if (len(self.transactions) < self.capacity):
-            self.transactions.append(transaction)
-        else:
-            print("Block full")
-            #create new block ?
+        self.transactions.append(transaction)
+        if (len(self.transactions) == self.capacity):
+            #create new block
+            pass
 
     def block_dict(self):
         block_dictionary = {
