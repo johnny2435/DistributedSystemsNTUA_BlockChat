@@ -20,7 +20,7 @@ class Wallet:
         # Calculate the wallet balance
         return sum(self.utxos.values())
     
-    def add_utxo(self, transaction_id, output_index, amount):
+    def add_utxo(self, transaction_id, amount):
         # Add a UTXO to the wallet
-        self.utxos[(transaction_id, output_index)] = amount
+        self.utxos[transaction_id] = amount
 
