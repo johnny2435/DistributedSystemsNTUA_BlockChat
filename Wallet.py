@@ -12,10 +12,6 @@ class Wallet:
         # Return the public key
         return self.public_key
 
-    def get_private_key(self):
-        # Return the private key
-        return self.private_key
-
     def get_balance(self):
         # Calculate the wallet balance
         return sum(self.utxos.values())
