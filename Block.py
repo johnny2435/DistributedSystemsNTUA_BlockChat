@@ -19,9 +19,6 @@ class Block:
     
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
-        if (len(self.transactions) == self.capacity):
-            #create new block
-            pass
 
     def block_dict(self):
         block_dictionary = {
