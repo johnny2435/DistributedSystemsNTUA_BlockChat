@@ -10,13 +10,11 @@ class Block:
         self.validator = validator
         self.previous_hash = previous_hash
 
-        self.current_hash = self.hash()
-    
     def hash(self):
         block_dictionary = self.block_dict()
         block_json = json.dumps(block_dictionary)
         return hashlib.sha256(str(block_json).encode()).hexdigest()
-    
+
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
 
@@ -29,5 +27,3 @@ class Block:
             'previous_hash': self.previous_hash
         }
         return block_dictionary
-
-    
