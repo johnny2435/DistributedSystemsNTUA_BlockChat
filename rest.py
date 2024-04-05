@@ -69,7 +69,7 @@ def addNode():
     myNode.ring = data.copy()
     #sets self.id as the corresponding id 
     for pub_key, value in data.items():
-        if(myNode.wallet.address.decode() == pub_key):
+        if(myNode.wallet.public_key.decode() == pub_key):
             myNode.id = value[0]
             value[2] = Node.INITIAL_STAKE #einai swsto?
     return 'broadcast' #??
