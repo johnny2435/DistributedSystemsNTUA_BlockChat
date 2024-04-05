@@ -12,8 +12,8 @@ random.seed(10) #move
 INITIAL_STAKE = 10
 CAPACITY = 5
 port = ':5000'
-ip = '192.168.0.1'
-master_ip = '192.168.0.1'
+ip = '192.168.1.1'
+master_ip = '192.168.1.1'
 
 class Node:
     def __init__(self, bootstrap = False, N=0):
@@ -22,6 +22,8 @@ class Node:
         self.chain = Blockchain.Blockchain(capacity=CAPACITY)
         self.nonce = 0
         self.minted = False
+        self.stakes_soft = {}
+        
         if(bootstrap):
             self.id = 0
             self.current_id_count = 1 #id for next node
@@ -56,14 +58,17 @@ class Node:
     
         trans = Transaction.Transaction(self.wallet.public_key, receiver, self.nonce, \
                             transactionInputs, type_of_transaction, amount, message)
+
+        self.sign_transaction(trans)
+        
+        self.nonce += 1
         self.broadcast_transaction(trans)
-  
         return trans
 
     #*
     def sign_transaction(self, transaction):
         transaction.sign_transaction(self.wallet.private_key)
-        return transaction
+        return
 
     #*
     def verify_signature(self, transaction):
@@ -103,24 +108,17 @@ class Node:
       outputs = T.transaction_outputs
   
       if inputs == []:
-        print("[Validation Failed]: You got no inputs bozo!")
+        print("[Validation Failed]: You got no inputs!")
         return False
-  
-      total = sum([t_in.amount for t_in in inputs])
-  
-      fee = T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message)
-      stake = self.ring[T.sender_address][2] #sender_address is sender public key
-      if total - stake < T.amount + fee:
-        print(co.colored("[ERROR]: Sender doesn't have enough money", 'red'))
-        return False
-  
+
+
       for t_in in inputs:
         found = False 
         for t_utxo in self.wallet.utxos_soft:
           if t_in.transaction_id == t_utxo.transaction_id and \
           t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
               found = True
-        if found == False:
+        if not found:
           print("\n")
           print("\t\t[Validation Failed]: Transaction Input didn't match UTXOs")
           print("\t\t\tTransaction that didn't match:")
@@ -132,11 +130,20 @@ class Node:
         if t_out.amount < 0:
           print(co.colored("[ERROR]: UTXO output has negative value", 'red'))
           return False 
+
+      
+      total = sum([t_in.amount for t_in in inputs])
+  
+      fee = T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message)
+      stake = self.stakes_soft[T.sender_address]  #sender_address is sender public key
+      if total - stake < T.amount + fee:
+        print(co.colored("[ERROR]: Sender doesn't have enough money", 'red'))
+        return False
   
       return True
 
     #in rest if capacity of pool is exceeded execute mint_block and broadcast block
-    def add_transaction_to_pool(self, T): #in rest first validate then add to pool
+    def add_transaction_to_pool(self, T): #in rest first validate then add to pool then run soft
       self.transaction_pool.append(T)
       print('Transaction added to pool')
       return
@@ -151,31 +158,57 @@ class Node:
           block.add_transaction(tx)
         return block
       self.minted = True #:p change it to false uwu
-      return
+      return -1
     #in rest remove the tx from pool if block valid (in receive block)
 
+  
     #*
     #called when a block is received
+    #if the block is valid, it validates block and runs transaction_soft for each transaction based on global utxos
+    #if the block is invalid it changes nothing and returns false
     def validate_block(self, B):
       if not self.minted:
         self.validator = self.Proof_of_Stake()
       self.minted = False
       print(co.colored("[ENTER]: validate_block\n", "red"))
-      if not self.validator == B.validator:
-        print("[EXIT]: validate_block: wrong validator\n")
+      if self.validator != B.validator:
+        print("[EXIT]: validate_block: Wrong validator\n")
         return False
+        
+      copy_utxos_soft = self.wallet.utxos_soft.copy()
+      copy_stakes_soft = self.stakes_soft.copy()
+      
+      self.wallet.utxos_soft = self.wallet.utxos.copy()
+      self.stakes_soft = {}
+      for public_key in self.ring.keys():
+        self.stakes_soft[public_key] = self.ring[public_key][2]
+      
       for tx in B.transactions:
         if not self.validate_transaction(tx):
           print("[EXIT]: validate_block: invalid transaction\n")
+          self.wallet.utxos_soft = copy_utxos_soft
+          self.stakes_soft = copy_stakes_soft
           return False
+        self.run_transaction_soft(tx, self.validator)
+
+        
       if self.chain.get_last_block().hash() != B.previous_hash:
         print("[EXIT]: validate_block: prev hash doesn't match\n")
+        self.wallet.utxos_soft = copy_utxos_soft
+        self.stakes_soft = copy_stakes_soft
         return False
+
       for tx in B.transactions:
-        self.run_transaction_local(tx)
+        self.transaction_pool.remove(tx)
+
+      self.wallet.utxos = self.wallet.utxos_soft.copy()
+      for public_key in self.ring.keys():
+        self.ring[public_key][2] = self.stakes_soft[public_key]
+
       print("[EXIT]: validate_block: valid\n")
       return True
-      
+
+  
   
     #find a way to save stakes (maybe in ring)
     def Proof_of_Stake(self):
@@ -196,7 +229,7 @@ class Node:
         return validator
 
 
-
+    #this probs wont be used
     def run_transaction(self, T, validator):
         if T.receiver_address == 0:
             self.ring[T.sender_address][2] = T.amount
@@ -231,11 +264,47 @@ class Node:
 
 
   
+    def run_transaction_soft(self, T, validator):
+        if T.receiver_address == 0:
+          self.stakes_soft[T.sender_address] = T.amount
+          return
+  
+        transaction_inputs = T.transaction_inputs
+        transaction_outputs = T.transaction_outputs
+        print("[ENTER]: run_transaction\n")
+        if T.type_of_transaction == 'coins':
+          for t_in in transaction_inputs:
+              for utxo in self.wallet.utxos_soft.copy():
+                  if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
+                  and t_in.amount == utxo.amount:
+                      self.wallet.utxos_soft.remove(utxo)
+                      break
+          for t_out in transaction_outputs:
+              if (t_out.amount > 0):
+                  self.wallet.utxos_soft.append(t_out)
+          fee = T.amount * 0.03
+  
+        else:
+          fee = len(T.message)
+        #find validator's public_address
+        for key, val in self.ring.items():
+          if val[0] == validator:
+              validator_address = key
+          else:
+              print("Error: validator_id not in ring")
+        fee_tx = Transaction.TransactionIO(T.transaction_id, validator_address, fee)
+        self.wallet.utxos_soft.append(fee_tx)
+        print("[EXIT]: run_transaction\n")
+  
+        return
+
+
+
+    #used only in validate_chain
     def run_block(self, B):
         for tx in B.transactions:
-            self.run_transaction(tx, B.validator)
-            self.transaction_pool.remove(tx)
-        self.wallet.utxos_soft = self.wallet.utxos.copy()
+            self.run_transaction_soft(tx, B.validator)
+        self.wallet.utxos = self.wallet.utxos_soft.copy()   #this is supposed to copy the same thing to itself
 
   
     #validate and run
@@ -245,10 +314,9 @@ class Node:
       self.chain.add_block(genesis_block)
       
       for block in chain.blocks[1:]:   #exclude genesis block
-        if not self.validate_block(block):
+        if not self.validate_block(block): #block also runs in validate_block
           print("[EXIT]: validate_chain: wrong block\n")
           return False
-        self.run_block(block)
         self.chain.add_block(block)
       return True
 
@@ -256,7 +324,11 @@ class Node:
     def stake(self, amount):
       self.create_transaction(0, 'coins', amount)
       return
-      
+
+
+
+
+  
 
     #public key must be decoded
     def register_node_to_ring(self, public_key, ip):
