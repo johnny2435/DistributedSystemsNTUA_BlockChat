@@ -84,7 +84,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
   port = args.port
 
-  myNode = node.Node()
+  myNode = Node.Node()
   # print(myNode.wallet.public_key)
 
   # myBlock = myNode.create_new_block()
