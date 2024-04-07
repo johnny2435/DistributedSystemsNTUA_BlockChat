@@ -27,7 +27,7 @@ class Node:
         if(bootstrap):
             self.id = 0
             self.current_id_count = 1 #id for next node
-            self.ring = {self.wallet.public_key : [0, '192.168.0.1', INITIAL_STAKE]} #.decode() if u want print :P
+            self.ring = {self.wallet.public_key.decode() : [0, '192.168.0.1', INITIAL_STAKE]} #addr is decoded
           
             genesis_transaction = Transaction.Transaction(b'0', self.wallet.public_key,\
             self.nonce, [], "coins", amount=1000*N, signature=b'bour_gee')
@@ -135,7 +135,7 @@ class Node:
       total = sum([t_in.amount for t_in in inputs])
   
       fee = T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message)
-      stake = self.stakes_soft[T.sender_address]  #sender_address is sender public key
+      stake = self.stakes_soft[T.sender_address.decode()]  #sender_address is sender public key
       if total - stake < T.amount + fee:
         print(co.colored("[ERROR]: Sender doesn't have enough money", 'red'))
         return False
@@ -266,7 +266,7 @@ class Node:
   
     def run_transaction_soft(self, T, validator):
         if T.receiver_address == 0:
-          self.stakes_soft[T.sender_address] = T.amount
+          self.stakes_soft[T.sender_address.decode()] = T.amount
           return
   
         transaction_inputs = T.transaction_inputs
@@ -286,16 +286,21 @@ class Node:
   
         else:
           fee = len(T.message)
+        
         #find validator's public_address
-        for key, val in self.ring.items():
-          if val[0] == validator:
-              validator_address = key
-          else:
+        if T.sender_address.decode() != b'0':
+            validator_address = -1
+            for key, val in self.ring.items():
+              if val[0] == validator:
+                validator_address = key
+                break
+            if validator_address == -1:
               print("Error: validator_id not in ring")
-        fee_tx = Transaction.TransactionIO(T.transaction_id, validator_address, fee)
-        self.wallet.utxos_soft.append(fee_tx)
+            else:
+              fee_tx = Transaction.TransactionIO(T.transaction_id, validator_address, fee)
+              self.wallet.utxos_soft.append(fee_tx)
         print("[EXIT]: run_transaction\n")
-  
+
         return
 
 
