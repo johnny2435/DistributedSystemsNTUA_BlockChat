@@ -8,7 +8,7 @@ import jsonpickle
 class TransactionIO:
     def __init__(self, transaction_id, address, amount):
         self.address = address
-        self.amount = amount
+        self.amount = float(amount)
         self.transaction_id = transaction_id
     
     def print_trans(self):
@@ -16,21 +16,21 @@ class TransactionIO:
               self.amount, "\n")
     
     def toString(self):
-        return [self.transaction_id, self.address.decode(), str(self.amount)]
+        return [self.transaction_id, self.address.decode(), self.amount]
     
     
     
-
+#public keys are encoded
 class Transaction:
     def __init__(self, sender_address, receiver_address, nonce, \
                  transaction_inputs, type_of_transaction, \
-                 amount=0, message="", signature = b"None"):
+                 amount=0.0, message="", signature = b"None"):
         self.sender_address = sender_address #sender_public_key
         self.receiver_address = receiver_address
         self.nonce = nonce
         self.type_of_transaction = type_of_transaction
         self.transaction_inputs = transaction_inputs
-        self.amount = amount
+        self.amount = float(amount)
         self.message = message
         self.transaction_id = self.calculate_transaction_id()
         self.transaction_outputs=[]
