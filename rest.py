@@ -17,7 +17,7 @@ BOOTSTRAP_URL = 'http://' + Node.BOOTSTRAP_IP + Node.PORT
 
 app = Flask(__name__)
 
-lock = Lock()
+#lock = Lock()
 
 #change data to tx
 def decode_transaction(data):
@@ -58,7 +58,7 @@ def getBalance():
 
 @app.route('/sendTransaction', methods=['POST'])
 def receive_transaction():
-  with lock:
+  #with lock:
     data = json.loads((request.data).decode())
     tx = decode_transaction(data)
 
@@ -72,19 +72,19 @@ def receive_transaction():
     if len(myNode.transaction_pool) >= Node.CAPACITY:
       myNode.mint_block(myNode.chain.get_last_block().hash()) 
   
-  return 'ok' 
+    return 'ok' 
 
 
 
 @app.route('/sendBlock', methods=['POST'])
 def receive_block():
-  with lock:
+  #with lock:
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
     if(myNode.validate_block(block)):
       myNode.chain.add_block(block)
-  return 'ok'
+    return 'ok'   #indent if you add lock
 
 
 @app.route('/sendBlockchain', methods=['POST'])
@@ -160,7 +160,7 @@ if __name__ == '__main__':
   
   if IP == Node.BOOTSTRAP_IP:
     myNode = Node.Node(bootstrap=True, N=5)
-    app.run(host=Node.BOOTSTRAP_IP, port=port, threaded=True)
+    app.run(host=Node.BOOTSTRAP_IP, port=port)
   else:
     myNode = Node.Node()
-    app.run(host=IP, port=port, threaded=True)
+    app.run(host=IP, port=port)
