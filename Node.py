@@ -254,7 +254,7 @@ class Node:
     for t_in in inputs:
       found = False
       for t_utxo in self.wallet.utxos_soft:
-        if t_in.transaction_id == t_utxo.transaction_id and \
+        if t_in.transaction_id.hexdigest() == t_utxo.transaction_id.hexdigest() and \
         t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
           found = True
       if not found:
