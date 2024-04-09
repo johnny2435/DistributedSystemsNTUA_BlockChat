@@ -355,6 +355,8 @@ class Node:
 
     #at this point we know the block is valid
     if validate_only:
+      self.wallet.utxos_soft = copy_utxos_soft
+      self.stakes_soft = copy_stakes_soft
       return True
     
     for tx in B.transactions:
