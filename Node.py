@@ -89,12 +89,14 @@ class Node:
     time.sleep(5)  ####
 
     receiver_address = self.id_to_address(0)
-    print("UTXOS: ", self.wallet.utxos)
-    for tx in self.wallet.utxos:
-      tx.print_trans()
-    print("SOFT UTXOS: ", self.wallet.utxos_soft)
-    for tx in self.wallet.utxos_soft:
-      tx.print_trans()
+
+    print("My balance is:", self.wallet.get_balance())
+    #print("UTXOS: ", self.wallet.utxos)
+    #for tx in self.wallet.utxos:
+      #tx.print_trans()
+    #print("SOFT UTXOS: ", self.wallet.utxos_soft)
+    #for tx in self.wallet.utxos_soft:
+      #tx.print_trans()
 
     print("My balance is now", self.wallet.get_balance())
     print("My soft balance is now", self.wallet.get_balance_soft())
