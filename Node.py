@@ -7,352 +7,403 @@ import threading
 import requests
 import math
 import random
+import termcolor as co
 
-random.seed(10) #move
 INITIAL_STAKE = 10
-CAPACITY = 5
-port = ':5000'
-ip = '192.168.1.1'
-master_ip = '192.168.1.1'
+CAPACITY = 2
+PORT = ':5000'
+BOOTSTRAP_IP = '192.168.1.1'
+
 
 class Node:
-    def __init__(self, bootstrap = False, N=0):
-        self.wallet = self.generate_wallet()
-        self.transaction_pool = []
-        self.chain = Blockchain.Blockchain(capacity=CAPACITY)
-        self.nonce = 0
-        self.minted = False
-        self.stakes_soft = {}
-        
-        if(bootstrap):
-            self.id = 0
-            self.current_id_count = 1 #id for next node
-            self.ring = {self.wallet.public_key.decode() : [0, '192.168.0.1', INITIAL_STAKE]} #addr is decoded
-          
-            genesis_transaction = Transaction.Transaction(b'0', self.wallet.public_key,\
-            self.nonce, [], "coins", amount=1000*N, signature=b'bour_gee')
-            
-            genesis_block = Block.Block(0, time.time(), [genesis_transaction], None, 1)
-          
-            self.run_block(genesis_block)
-            self.chain.add_block(genesis_block)
-        else:
-            self.id=-1
-            self.ring={}	
- 
 
-        run_trans = threading.Thread(target=self.run_trans_from_txt, daemon=True)
-        run_trans.start()
-
-    #*
-    def generate_wallet(self):
-        return Wallet.Wallet()
-
-    #*
-    def create_transaction(self, receiver, type_of_transaction, amount = 0, message = ""):
-        transactionInputs = []
+  def __init__(self, bootstrap=False, N=0):
+    self.wallet = self.generate_wallet()
+    self.transaction_pool = []
+    self.chain = Blockchain.Blockchain()
+    self.nonce = 0
+    self.minted = False
+    self.stakes_soft = {}
+    self.nonces = {}  #pk -> last nonce in block
     
-        for tx in self.wallet.utxos_soft:
-            if tx.address == self.wallet.public_key:
-                transactionInputs.append(tx)
     
-        trans = Transaction.Transaction(self.wallet.public_key, receiver, self.nonce, \
-                            transactionInputs, type_of_transaction, amount, message)
+    if bootstrap:
+      self.id = 0
+      self.current_id_count = 1  #id for next node
+      self.ring = {
+          self.wallet.public_key.decode(): [0, BOOTSTRAP_IP, INITIAL_STAKE]
+      }  #addr is decoded in ring
 
-        self.sign_transaction(trans)
-        
-        self.nonce += 1
-        self.broadcast_transaction(trans)
-        return trans
+      genesis_transaction = Transaction.Transaction(b'0', self.wallet.public_key,\
+      self.nonce, [], "coins", amount=1000.0*N, signature=b'bour_gee')
+      genesis_block = Block.Block(0, time.time(), [genesis_transaction], None, 1)
 
-    #*
-    def sign_transaction(self, transaction):
-        transaction.sign_transaction(self.wallet.private_key)
-        return
+      self.run_block(genesis_block)
+      self.chain.add_block(genesis_block)
 
-    #*
-    def verify_signature(self, transaction):
-        return transaction.verify_signature()
-        
+    else:
+      self.id = -1
+      self.ring = {}
+      run_trans = threading.Thread(target=self.running_node, daemon=True)
+      run_trans.start()
+
   
-    def broadcast(self, obj, type):
-      dict = obj.to_dict() if type != 'NewNode' else obj
-      print("[Broadcast]: Broadcasting " + type + " ...")
-      print("\t" + type + ": ", dict)
-      for value in self.ring.values():
-          #dict has items of type: {public_key: [id, ip, stake]}
-          ip_bc = value[1]
-          url = 'http://' + ip_bc + port + '/send'+ type
-          requests.post(url, json = dict)
+  def id_to_address(self, id):
+    for key, val in self.ring.items():
+      if val[0] == id:
+        return key.encode()
+    print("Error: id not in ring")
+    return
 
-    #*
-    def broadcast_transaction(self, tx):
-        self.broadcast(tx, 'Transaction')
-
-    #*
-    def broadcast_block(self, tx):
-        self.broadcast(tx, 'Block')
-
-
-
-    #*
-    def validate_transaction(self, T):
-      if not T.verify_signature(): 
-        print("Error: Wrong signature!\n")
-        return False
-
-      if T.sender_address == T.receiver_address:
-        print("[Transaction]: ERROR: You can't send BCC/messages to yourself")
-        return False
-      inputs = T.transaction_inputs
-      outputs = T.transaction_outputs
   
-      if inputs == []:
-        print("[Validation Failed]: You got no inputs!")
-        return False
+  def running_node(self):
 
+    time.sleep(2)
+    pub_key = {'public_key': self.wallet.get_public_key().decode()}
+    if self.id != 0:
+      requests.post("http://" + BOOTSTRAP_IP + PORT + "/register",
+                    json=pub_key)
+    time.sleep(5)  ####
 
-      for t_in in inputs:
-        found = False 
-        for t_utxo in self.wallet.utxos_soft:
-          if t_in.transaction_id == t_utxo.transaction_id and \
-          t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
-              found = True
-        if not found:
-          print("\n")
-          print("\t\t[Validation Failed]: Transaction Input didn't match UTXOs")
-          print("\t\t\tTransaction that didn't match:")
-          t_in.print_trans()
-          print("Validation Error Message END\n")
-          return False
+    receiver_address = self.id_to_address(0)
+    print("UTXOS: ", self.wallet.utxos)
+    for tx in self.wallet.utxos:
+      tx.print_trans()
+    print("SOFT UTXOS: ", self.wallet.utxos_soft)
+    for tx in self.wallet.utxos_soft:
+      tx.print_trans()
+
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+
+    print("Sending 100 BCC to 0")
+    self.create_transaction(receiver_address, "coins", amount=100)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+
+    print("Sending 150 BCC to 0")
+    self.create_transaction(receiver_address, "coins", amount=150)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+
+    print("Sending 900 BCC to 0")
+    self.create_transaction(receiver_address, "coins", amount=900)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+    project_path = "./"
+
   
-      for t_out in outputs:
-        if t_out.amount < 0:
-          print(co.colored("[ERROR]: UTXO output has negative value", 'red'))
-          return False 
+  #*
+  def generate_wallet(self):
+    return Wallet.Wallet()
 
+  
+  #*
+  def create_transaction(self,
+                         receiver,
+                         type_of_transaction,
+                         amount=0.0,
+                         message=""):
+    transactionInputs = []
+    amount=float(amount)
+
+    for tx in self.wallet.utxos_soft:
+      if tx.address == self.wallet.public_key:
+        transactionInputs.append(tx)
+
+    trans = Transaction.Transaction(self.wallet.public_key, receiver, self.nonce, \
+                        transactionInputs, type_of_transaction, amount, message)
+
+    self.sign_transaction(trans)
+
+    self.nonce += 1
+    self.broadcast_transaction(trans)
+    return trans
+
+  
+  #*
+  def sign_transaction(self, transaction):
+    transaction.sign_transaction(self.wallet.private_key)
+    return
+
+  
+  #*
+  def verify_signature(self, transaction):
+    return transaction.verify_signature()
+
+  
+  def broadcast(self, obj, type):
+    dict = obj.to_dict() if type != 'NewNode' else obj
+    print("[Broadcast]: Broadcasting " + type + " ...")
+    #print("\t" + type + ": ", dict)
+    print("Ring is ", self.ring, "/n")
+    for value in self.ring.values():
+      #dict has items of type: {public_key: [id, ip, stake]}
+      ip_bc = value[1]
+      url = 'http://' + ip_bc + PORT + '/send' + type
+      print("sending to " + ip_bc + PORT)
       
-      total = sum([t_in.amount for t_in in inputs])
-  
-      fee = T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message)
-      stake = self.stakes_soft[T.sender_address.decode()]  #sender_address is sender public key
-      if total - stake < T.amount + fee:
-        print(co.colored("[ERROR]: Sender doesn't have enough money", 'red'))
-        return False
-  
-      return True
+      requests.post(url, json=dict)
 
-    #in rest if capacity of pool is exceeded execute mint_block and broadcast block
-    def add_transaction_to_pool(self, T): #in rest first validate then add to pool then run soft
-      self.transaction_pool.append(T)
-      print('Transaction added to pool')
-      return
   
-    #*
-    def mint_block(self, prevHash):
-      index = self.chain.get_last_block().index + 1
+  #*
+  def broadcast_transaction(self, tx):
+    print("Created transaction:", tx.to_dict())
+    self.broadcast(tx, 'Transaction')
+
+  
+  #*
+  def broadcast_block(self, block):
+    self.broadcast(block, 'Block')
+
+  
+  #*
+  def validate_transaction(self, T):
+    if not T.verify_signature():
+      print(co.colored("Error: Wrong signature!\n", 'red'))
+      print(T.to_dict())
+      print(co.colored("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", 'red'))
+      return False
+
+    if T.sender_address == T.receiver_address:
+      print("[Transaction]: ERROR: You can't send BCC/messages to yourself")
+      return False
+    inputs = T.transaction_inputs
+    outputs = T.transaction_outputs
+
+    if inputs == []:
+      print("[Validation Failed]: You got no inputs!")
+      return False
+
+    print("SOFT UTXOS: ", self.wallet.utxos_soft)
+    for tx in self.wallet.utxos_soft:
+      tx.print_trans()
+    for t_in in inputs:
+      found = False
+      for t_utxo in self.wallet.utxos_soft:
+        if t_in.transaction_id == t_utxo.transaction_id and \
+        t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
+          found = True
+      if not found:
+        print("\n")
+        print("\t\t[Validation Failed]: Transaction Input didn't match UTXOs")
+        print("\t\t\tTransaction that didn't match:")
+        t_in.print_trans()
+        print("Validation Error Message END\n")
+        return False
+
+    for t_out in outputs:
+      if t_out.amount < 0:
+        print(co.colored("[ERROR]: UTXO output has negative value", 'red'))
+        return False
+
+    total = sum([t_in.amount for t_in in inputs])
+
+    fee = float(T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message))
+    stake = self.stakes_soft[
+        T.sender_address.decode()]  #sender_address is sender public key
+    if total - stake < T.amount + fee:
+      print(co.colored("[ERROR]: Sender doesn't have enough money", 'red'))
+      return False
+
+    return True
+
+  
+  #in rest if capacity of pool is exceeded execute mint_block and broadcast block
+  def add_transaction_to_pool(
+      self, T):  #in rest first validate then add to pool then run soft
+    self.transaction_pool.append(T)
+    print('Transaction added to pool')
+    print(T.to_dict())
+    return
+
+  
+  #*
+  def mint_block(self, prevHash):
+    index = self.chain.get_last_block().index + 1
+    self.validator = self.Proof_of_Stake()
+    if self.id == self.validator:
+      block = Block.Block(index, time.time(), [], self.id, prevHash)
+      for tx in self.transaction_pool[:CAPACITY]:
+        block.add_transaction(tx)
+      self.broadcast_block(block)
+      return block
+    self.minted = True  #:p change it to false uwu
+    return -1
+
+  
+  #in validate_block remove the tx from pool if block valid
+  #*
+  #called when a block is received
+  #if the block is valid, it validates block and runs transaction_soft for each transaction based on global utxos
+  #if the block is invalid it changes nothing and returns false
+  def validate_block(self, B):
+    if not self.minted:
       self.validator = self.Proof_of_Stake()
-      if self.id == self.validator:
-        block = Block.Block(index, time.time(), [], self.id, prevHash)
-        for tx in self.transaction_pool[:CAPACITY]:
-          block.add_transaction(tx)
-        return block
-      self.minted = True #:p change it to false uwu
-      return -1
-    #in rest remove the tx from pool if block valid (in receive block)
+    self.minted = False
+    print(co.colored("[ENTER]: validate_block\n", "red"))
+    if self.validator != B.validator:
+      print("[EXIT]: validate_block: Wrong validator\n")
+      return False
 
-  
-    #*
-    #called when a block is received
-    #if the block is valid, it validates block and runs transaction_soft for each transaction based on global utxos
-    #if the block is invalid it changes nothing and returns false
-    def validate_block(self, B):
-      if not self.minted:
-        self.validator = self.Proof_of_Stake()
-      self.minted = False
-      print(co.colored("[ENTER]: validate_block\n", "red"))
-      if self.validator != B.validator:
-        print("[EXIT]: validate_block: Wrong validator\n")
-        return False
-        
-      copy_utxos_soft = self.wallet.utxos_soft.copy()
-      copy_stakes_soft = self.stakes_soft.copy()
-      
-      self.wallet.utxos_soft = self.wallet.utxos.copy()
-      self.stakes_soft = {}
-      for public_key in self.ring.keys():
-        self.stakes_soft[public_key] = self.ring[public_key][2]
-      
-      for tx in B.transactions:
-        if not self.validate_transaction(tx):
-          print("[EXIT]: validate_block: invalid transaction\n")
-          self.wallet.utxos_soft = copy_utxos_soft
-          self.stakes_soft = copy_stakes_soft
-          return False
-        self.run_transaction_soft(tx, self.validator)
+    copy_utxos_soft = self.wallet.utxos_soft.copy()
+    copy_stakes_soft = self.stakes_soft.copy()
 
-        
-      if self.chain.get_last_block().hash() != B.previous_hash:
-        print("[EXIT]: validate_block: prev hash doesn't match\n")
+    self.wallet.utxos_soft = self.wallet.utxos.copy()
+    self.stakes_soft = {}
+    
+    for public_key in self.ring:
+      self.stakes_soft[public_key] = self.ring[public_key][2]
+
+    for tx in B.transactions:
+      if not self.validate_transaction(tx):
+        print("[EXIT]: validate_block: invalid transaction\n")
         self.wallet.utxos_soft = copy_utxos_soft
         self.stakes_soft = copy_stakes_soft
         return False
+      self.run_transaction_soft(tx, self.validator)
 
-      for tx in B.transactions:
-        self.transaction_pool.remove(tx)
+    if self.chain.get_last_block().hash() != B.previous_hash:
+      print("[EXIT]: validate_block: prev hash doesn't match\n")
+      self.wallet.utxos_soft = copy_utxos_soft
+      self.stakes_soft = copy_stakes_soft
+      return False
 
-      self.wallet.utxos = self.wallet.utxos_soft.copy()
-      for public_key in self.ring.keys():
-        self.ring[public_key][2] = self.stakes_soft[public_key]
+    #at this point we know the block is valid
+    for tx in B.transactions:
+      self.nonces[tx.sender_address.decode()] = tx.nonce
 
-      print("[EXIT]: validate_block: valid\n")
-      return True
+    print("Transaction Pool before removing:", self.transaction_pool, "\n")
+    for tx in B.transactions:
+      #print("Looking for transaction", tx.transaction_id.hexdigest(), "\n")
+      for i in range(len(self.transaction_pool)):
+        #print("In pool:", self.transaction_pool[i].transaction_id.hexdigest(), "\n")
+        if self.transaction_pool[i].transaction_id.hexdigest() == tx.transaction_id.hexdigest():
+          #print("Found transaction\n")
+          self.transaction_pool.pop(i)
+          break
+    print("Transaction Pool after removing:", self.transaction_pool, "\n")
 
-  
-  
-    #find a way to save stakes (maybe in ring)
-    def Proof_of_Stake(self):
-        total_stakes = sum([v[2] for v in self.ring.values()])
-        if total_stakes == 0:
-            return False
-  
-        stake_target = random.uniform(0, total_stakes)
-        current = 0
-        l = list(self.ring.values())
-        l.sort()
-        for node_id, _, stake_amount in l:
-            current += stake_amount
-            if current >= stake_target:
-                validator = node_id
-                break
-  
-        return validator
+    self.wallet.utxos = self.wallet.utxos_soft.copy()
+    for public_key in self.ring:
+      self.ring[public_key][2] = self.stakes_soft[public_key]
 
-
-    #this probs wont be used
-    def run_transaction(self, T, validator):
-        if T.receiver_address == 0:
-            self.ring[T.sender_address][2] = T.amount
-            return
-
-        transaction_inputs = T.transaction_inputs
-        transaction_outputs = T.transaction_outputs
-        print("[ENTER]: run_transaction\n")
-        if T.type_of_transaction == 'coins':
-            for t_in in transaction_inputs:
-                for utxo in self.wallet.utxos.copy():
-                    if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
-                    and t_in.amount == utxo.amount:
-                        self.wallet.utxos.remove(utxo)
-                        break
-            for t_out in transaction_outputs:
-                if (t_out.amount > 0):
-                    self.wallet.utxos.append(t_out)
-            fee = T.amount * 0.03
-     
-        else:
-            fee = len(T.message)
-        for key, val in self.ring.items():
-            if val[0] == validator:
-                validator_address = key
-            else:
-                print("Error: validator_id not in ring")
-        fee_tx = Transaction.TransactionIO(T.transaction_id, validator_address, fee)
-        self.wallet.utxos.append(fee_tx)
-        print("[EXIT]: run_transaction\n")
-        return
-
+    print("[EXIT]: validate_block: valid\n")
+    return True
 
   
-    def run_transaction_soft(self, T, validator):
-        if T.receiver_address == 0:
-          self.stakes_soft[T.sender_address.decode()] = T.amount
-          return
-  
-        transaction_inputs = T.transaction_inputs
-        transaction_outputs = T.transaction_outputs
-        print("[ENTER]: run_transaction\n")
-        if T.type_of_transaction == 'coins':
-          for t_in in transaction_inputs:
-              for utxo in self.wallet.utxos_soft.copy():
-                  if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
-                  and t_in.amount == utxo.amount:
-                      self.wallet.utxos_soft.remove(utxo)
-                      break
-          for t_out in transaction_outputs:
-              if (t_out.amount > 0):
-                  self.wallet.utxos_soft.append(t_out)
-          fee = T.amount * 0.03
-  
-        else:
-          fee = len(T.message)
-        
-        #find validator's public_address
-        if T.sender_address.decode() != b'0':
-            validator_address = -1
-            for key, val in self.ring.items():
-              if val[0] == validator:
-                validator_address = key
-                break
-            if validator_address == -1:
-              print("Error: validator_id not in ring")
-            else:
-              fee_tx = Transaction.TransactionIO(T.transaction_id, validator_address, fee)
-              self.wallet.utxos_soft.append(fee_tx)
-        print("[EXIT]: run_transaction\n")
+  #find a way to save stakes (maybe in ring)
+  def Proof_of_Stake(self):
+    hash = self.chain.get_last_block().hash()
+    print("\nMy hash is", hash, "\n")
+    random.seed(hash)
+    total_stakes = sum([v[2] for v in self.ring.values()])
+    if total_stakes == 0:
+      return False
 
-        return
+    stake_target = random.uniform(0, total_stakes)
+    current = 0
+    l = list(self.ring.values())
+    l.sort()
 
-
-
-    #used only in validate_chain
-    def run_block(self, B):
-        for tx in B.transactions:
-            self.run_transaction_soft(tx, B.validator)
-        self.wallet.utxos = self.wallet.utxos_soft.copy()   #this is supposed to copy the same thing to itself
+    validator = -1
+    for node_id, _, stake_amount in l:
+      current += stake_amount
+      if current >= stake_target:
+        validator = node_id
+        break
+    if validator == -1:
+      print("Error: Validator not found")
+    else:
+      print("Validator is", validator)
+    return validator
 
   
-    #validate and run
-    def validate_chain(self, chain):
-      genesis_block = chain.blocks[0]
-      self.run_block(genesis_block)
-      self.chain.add_block(genesis_block)
-      
-      for block in chain.blocks[1:]:   #exclude genesis block
-        if not self.validate_block(block): #block also runs in validate_block
-          print("[EXIT]: validate_chain: wrong block\n")
-          return False
-        self.chain.add_block(block)
-      return True
-
-
-    def stake(self, amount):
-      self.create_transaction(0, 'coins', amount)
+  #validator is None when the transaction is not in a block
+  def run_transaction_soft(self, T, validator=None):
+    
+    if T.receiver_address == 0:
+      self.stakes_soft[T.sender_address.decode()] = T.amount
       return
 
+    transaction_inputs = T.transaction_inputs
+    transaction_outputs = T.transaction_outputs
+    print("[ENTER]: run_transaction\n")
+    if T.type_of_transaction == 'coins':
+      for t_in in transaction_inputs:
+        for utxo in self.wallet.utxos_soft.copy():
+          if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
+          and t_in.amount == utxo.amount:
+            self.wallet.utxos_soft.remove(utxo)
+            break
+      for t_out in transaction_outputs:
+        if (t_out.amount > 0):
+          self.wallet.utxos_soft.append(t_out)
+      fee = T.amount * 0.03
 
+    else:
+      fee = len(T.message)
 
+    #find validator's public_address
+    if validator is not None and T.sender_address != b'0':
+      validator_address = self.id_to_address(validator)
+      fee_tx = Transaction.TransactionIO(T.transaction_id.hexdigest(),
+                                         validator_address, fee)
+      self.wallet.utxos_soft.append(fee_tx)
+
+    print("[EXIT]: run_transaction\n")
+    return
 
   
+  #used only in validate_chain
+  def run_block(self, B):
+    for tx in B.transactions:
+      self.run_transaction_soft(tx, B.validator)
+    self.wallet.utxos = self.wallet.utxos_soft.copy()
+    for tx in B.transactions:
+      self.nonces[tx.sender_address.decode()] = tx.nonce
+    
 
-    #public key must be decoded
-    def register_node_to_ring(self, public_key, ip):
-        #Only bootstrap node brodcasts the ring to all nodes and sends the request node a new id and 1000 BCCs
-        if(self.id==0):
-            if public_key in self.ring.keys():
-                requests.post('http://'+ip+port+'/registerFail', json={'ERROR' : 'Public address already in use!'})
-            else:
-                self.ring[public_key] = [self.current_id_count, ip, INITIAL_STAKE]
-                #maybe error because it was json={'ring' : self.ring}
-                self.broadcast(self.ring, "NewNode")
-                self.current_id_count+=1
-    
-                url_newNode = 'http://'+ip+port+'/sendBlockchain'
-                blockchain = self.chain.to_dict()
-                requests.post(url_newNode, json=blockchain)
-    
-                self.create_transaction(public_key.encode(), "coins", amount=1000)
+  #validate and run
+  def validate_chain(self, chain):
+    genesis_block = chain.blocks[0]
+    self.run_block(genesis_block)
+
+    self.chain.add_block(genesis_block)
+
+    for block in chain.blocks[1:]:  #exclude genesis block
+      if not self.validate_block(block):  #block also runs in validate_block
+        print("[EXIT]: validate_chain: wrong block\n")
+        return False
+      self.chain.add_block(block)
+    return True
+
   
-        return
+  def stake(self, amount):
+    self.create_transaction(0, 'coins', amount)
+    return
 
+  
+  #public key must be decoded
+  def register_node_to_ring(self, public_key, ip):
+    #Only bootstrap node brodcasts the ring to all nodes and sends the request node a new id and 1000 BCCs
+    if (self.id == 0):
+      if public_key in self.ring:
+        requests.post('http://' + ip + PORT + '/registerFail',
+                      json={'ERROR': 'Public address already in use!'})
+      else:
+        self.ring[public_key] = [self.current_id_count, ip, INITIAL_STAKE]
+        #maybe error because it was json={'ring' : self.ring}
+        self.broadcast(self.ring, "NewNode")
+        self.current_id_count += 1
 
+        url_newNode = 'http://' + ip + PORT + '/sendBlockchain'
+        blockchain = self.chain.to_dict()
+        requests.post(url_newNode, json=blockchain)
+        #time.sleep(2)
+        self.create_transaction(public_key.encode(), "coins", amount=1000.0)
+
+    return
