@@ -1,4 +1,5 @@
 import requests
+import socket
 from flask import Flask, jsonify, request, render_template
 import json
 # from flask_cors import CORS
@@ -17,7 +18,6 @@ import jsonpickle
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
 
 BOOTSTRAP_URL = 'http://' + Node.BOOTSTRAP_IP + Node.PORT
-IP = '192.168.1.2'
 
 app = Flask(__name__)
 
@@ -146,7 +146,6 @@ def renew_pk():
     return 'ok'
 
 
-
 if __name__ == '__main__':  
 
   parser = ArgumentParser()
@@ -154,9 +153,12 @@ if __name__ == '__main__':
   args = parser.parse_args()
   port = args.port
 
-  #uncomment if bootstrap
-  #myNode = Node.Node(bootstrap=True, N=5)
-  #app.run(host=Node.BOOTSTRAP_IP, port=port)
-
-  myNode = Node.Node()
-  app.run(host=IP, port=port)
+  hostname = socket.gethostname()
+  IP = socket.gethostbyname(hostname)
+  
+  if IP == Node.BOOTSTRAP_IP:
+    myNode = Node.Node(bootstrap=True, N=5)
+    app.run(host=Node.BOOTSTRAP_IP, port=port)
+  else:
+    myNode = Node.Node()
+    app.run(host=IP, port=port)
