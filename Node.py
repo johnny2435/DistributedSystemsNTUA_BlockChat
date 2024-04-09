@@ -241,8 +241,8 @@ class Node:
       return False
 
     #print("SOFT UTXOS: ", self.wallet.utxos_soft)
-    for tx in self.wallet.utxos_soft:
-      tx.print_trans()
+    #for tx in self.wallet.utxos_soft:
+      #tx.print_trans()
     for t_in in inputs:
       found = False
       for t_utxo in self.wallet.utxos_soft:
