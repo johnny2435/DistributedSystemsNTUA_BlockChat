@@ -254,7 +254,7 @@ class Node:
     for t_in in inputs:
       found = False
       for t_utxo in self.wallet.utxos_soft:
-        if t_in.transaction_id.hexdigest() == t_utxo.transaction_id.hexdigest() and \
+        if t_in.transaction_id == t_utxo.transaction_id and \
         t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
           found = True
       if not found:
@@ -354,7 +354,7 @@ class Node:
       #print("Looking for transaction", tx.transaction_id.hexdigest(), "\n")
       for i in range(len(self.transaction_pool)):
         #print("In pool:", self.transaction_pool[i].transaction_id.hexdigest(), "\n")
-        if self.transaction_pool[i].transaction_id.hexdigest() == tx.transaction_id.hexdigest():
+        if self.transaction_pool[i].transaction_id == tx.transaction_id:
           #print("Found transaction\n")
           self.transaction_pool.pop(i)
           break
@@ -406,7 +406,7 @@ class Node:
     if T.type_of_transaction == 'coins':
       for t_in in transaction_inputs:
         for utxo in self.wallet.utxos_soft.copy():
-          if t_in.transaction_id.hexdigest() == utxo.transaction_id.hexdigest() and t_in.address == utxo.address \
+          if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
           and t_in.amount == utxo.amount:
             print(co.colored("UTXO removed", 'blue'))
             self.wallet.utxos_soft.remove(utxo)
