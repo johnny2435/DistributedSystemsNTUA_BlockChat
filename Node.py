@@ -38,7 +38,7 @@ class Node:
       self.nonce, [], "coins", amount=1000.0*N, signature=b'bour_gee')
       genesis_block = Block.Block(0, time.time(), [genesis_transaction], None, 1)
 
-      self.run_block(genesis_block)
+      self.run_genesis_block(genesis_block)
       self.chain.add_block(genesis_block)
 
     else:
@@ -83,7 +83,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(random.uniform(2,5))
+      time.sleep(1 + self.id/10)
       s = f.readline()
       print("Blockchain length: ", len(self.chain.blocks))
 
@@ -350,13 +350,9 @@ class Node:
       if not self.validate_transaction(tx):
         print(co.colored("[EXIT]: validate_block: invalid transaction\n", 'red'))
         #print("Current Block: ", B.to_dict(), "\n")
-
-        self.wallet.utxos=[]
-        self.ring = self.initial_ring.copy()
-        self.validate_chain(self.chain)
         
-        #self.wallet.utxos_soft = copy_utxos_soft
-        #self.stakes_soft = copy_stakes_soft
+        self.wallet.utxos_soft = copy_utxos_soft
+        self.stakes_soft = copy_stakes_soft
         return False
       self.run_transaction_soft(tx, B.validator)
 
@@ -450,7 +446,11 @@ class Node:
 
   
   #used only in validate_chain
-  def run_block(self, B):
+  def run_genesis_block(self, B):
+    self.wallet.utxos_soft = []
+    self.stakes_soft = {}
+    for pub_key in self.ring:
+      self.stakes_soft[pub_key] = self.ring[pub_key][2]
     for tx in B.transactions:
       self.run_transaction_soft(tx, B.validator)
     self.wallet.utxos = self.wallet.utxos_soft.copy()
@@ -461,7 +461,7 @@ class Node:
   #validate and run
   def validate_chain(self, chain):
     genesis_block = chain.blocks[0]
-    self.run_block(genesis_block)
+    self.run_genesis_block(genesis_block)
 
     self.chain.add_block(genesis_block)
 
