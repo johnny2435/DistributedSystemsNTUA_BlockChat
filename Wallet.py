@@ -1,5 +1,6 @@
 from Crypto.PublicKey import RSA  # provided by pycryptodome
 
+#public keys are encoded
 class Wallet:
     def __init__(self):
         keylength = 1024
@@ -16,6 +17,13 @@ class Wallet:
     def get_balance(self):
       balance = 0
       for tx in self.utxos:
+        if tx.address == self.public_key:
+          balance += tx.amount
+      return balance
+
+    def get_balance_soft(self):
+      balance = 0
+      for tx in self.utxos_soft:
         if tx.address == self.public_key:
           balance += tx.amount
       return balance
