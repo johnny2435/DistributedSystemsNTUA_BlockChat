@@ -17,7 +17,7 @@ import jsonpickle
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
 
 BOOTSTRAP_URL = 'http://' + Node.BOOTSTRAP_IP + Node.PORT
-#master_url='http://192.168.1.1:5000'
+IP = '192.168.1.2'
 
 app = Flask(__name__)
 
@@ -147,7 +147,6 @@ def renew_pk():
 
 
 
-#bootstrap
 if __name__ == '__main__':  
 
   parser = ArgumentParser()
@@ -155,23 +154,9 @@ if __name__ == '__main__':
   args = parser.parse_args()
   port = args.port
 
-  myNode = Node.Node(bootstrap=True, N=5)
-  # print(myNode.wallet.public_key)
+  #uncomment if bootstrap
+  #myNode = Node.Node(bootstrap=True, N=5)
+  #app.run(host=Node.BOOTSTRAP_IP, port=port)
 
-  app.run(host='192.168.1.1', port=port)
-
-
-#new node
-if __name__ == '__main__':  
-
-
-  
-  parser = ArgumentParser()
-  parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
-  args = parser.parse_args()
-  port = args.port
-  
   myNode = Node.Node()
-  # print(myNode.wallet.public_key)
-
-  app.run(host='192.168.1.2', port=port)
+  app.run(host=IP, port=port)
