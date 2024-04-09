@@ -83,7 +83,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(0.1)
+      time.sleep(0.5)
       s = f.readline()
 
     f.close()
