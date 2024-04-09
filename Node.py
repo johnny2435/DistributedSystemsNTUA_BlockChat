@@ -63,7 +63,7 @@ class Node:
     pub_key = {'public_key': self.wallet.get_public_key().decode()}
     if self.id != 0:
       requests.post("http://" + BOOTSTRAP_IP + PORT + "/register", json=pub_key)
-    time.sleep(20 + random.randint(0,2))
+    time.sleep(20 + random.random())
     if self.id==0:
       if len(self.ring) == CAPACITY:
         for public_key, value in self.ring.items():
@@ -83,7 +83,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(0.5)
+      time.sleep(1)
       s = f.readline()
 
     f.close()
@@ -323,6 +323,12 @@ class Node:
         print("Expected:", self.validator, "Received:", B.validator)
         return False
 
+    if self.chain.get_last_block().hash() != B.previous_hash:
+      print(co.colored("[EXIT]: validate_block: prev hash doesn't match\n", 'red'))
+      print("Expected:", self.chain.get_last_block().hash(), "Received:", B.previous_hash)
+      return False
+      
+    
     copy_utxos_soft = self.wallet.utxos_soft.copy()
     copy_stakes_soft = self.stakes_soft.copy()
 
@@ -339,13 +345,6 @@ class Node:
         self.stakes_soft = copy_stakes_soft
         return False
       self.run_transaction_soft(tx, B.validator)
-
-    if self.chain.get_last_block().hash() != B.previous_hash:
-      print(co.colored("[EXIT]: validate_block: prev hash doesn't match\n", 'red'))
-      print("Expected:", self.chain.get_last_block().hash(), "Received:", B.previous_hash)
-      self.wallet.utxos_soft = copy_utxos_soft
-      self.stakes_soft = copy_stakes_soft
-      return False
 
     #at this point we know the block is valid
     for tx in B.transactions:
@@ -407,8 +406,9 @@ class Node:
     if T.type_of_transaction == 'coins':
       for t_in in transaction_inputs:
         for utxo in self.wallet.utxos_soft.copy():
-          if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
+          if t_in.transaction_id.hexdigest() == utxo.transaction_id.hexdigest() and t_in.address == utxo.address \
           and t_in.amount == utxo.amount:
+            print(co.colored("UTXO removed", 'blue'))
             self.wallet.utxos_soft.remove(utxo)
             break
       for t_out in transaction_outputs:
