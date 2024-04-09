@@ -61,12 +61,12 @@ def receive_transaction():
     data = json.loads((request.data).decode())
     tx = decode_transaction(data)
 
-    
-    if((tx.sender_address.decode() not in myNode.nonces \
-       or myNode.nonces[tx.sender_address.decode()] < tx.nonce)\
-      and myNode.validate_transaction(tx)):
-      myNode.add_transaction_to_pool(tx)
-      with lock:
+    with lock:
+      if((tx.sender_address.decode() not in myNode.nonces \
+         or myNode.nonces[tx.sender_address.decode()] < tx.nonce)\
+        and myNode.validate_transaction(tx)):
+      
+        myNode.add_transaction_to_pool(tx)
         myNode.run_transaction_soft(tx)
   
     if len(myNode.transaction_pool) >= Node.CAPACITY:
