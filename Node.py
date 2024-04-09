@@ -58,12 +58,19 @@ class Node:
 
 
   def run_trans_from_txt(self):
-    
+
     time.sleep(5)
     pub_key = {'public_key': self.wallet.get_public_key().decode()}
     if self.id != 0:
       requests.post("http://" + BOOTSTRAP_IP + PORT + "/register", json=pub_key)
-    time.sleep(30)
+    time.sleep(20 + random.randint(0,2))
+    if self.id==0:
+      if len(self.ring) == CAPACITY:
+        for public_key, value in self.ring.items():
+          if value[0]!=0:
+            self.create_transaction(public_key.encode(), "coins", amount=1000.0)
+      else:
+        print(co.colored("Error: Nodes did not join in time", 'red'))
 
     project_path = "./"
     f = open(project_path + "5nodes/trans{}.txt".format(self.id), "r")
@@ -73,8 +80,9 @@ class Node:
       receiver, message = s.split(" ", 1)
       receiver_id = receiver[2:]
 
+      print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(0.5)
+      time.sleep(0.1)
       s = f.readline()
 
     f.close()
@@ -90,7 +98,6 @@ class Node:
 
     receiver_address = self.id_to_address(0)
 
-    print("My balance is:", self.wallet.get_balance())
     #print("UTXOS: ", self.wallet.utxos)
     #for tx in self.wallet.utxos:
       #tx.print_trans()
@@ -462,10 +469,6 @@ class Node:
         url_newNode = 'http://' + ip + PORT + '/sendBlockchain'
         blockchain = self.chain.to_dict()
         requests.post(url_newNode, json=blockchain)
-        #time.sleep(2)
-        if len(self.ring) == CAPACITY:
-          for public_key, value in self.ring.items():
-            if value[0]!=0:
-              self.create_transaction(public_key.encode(), "coins", amount=1000.0)
+        
 
     return
