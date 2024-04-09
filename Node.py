@@ -307,8 +307,8 @@ class Node:
         block.add_transaction(tx)
         self.transaction_pool.pop(0)
         
-        
-      self.broadcast_block(block)
+      if self.validate_block(block, validate_only = True):
+        self.broadcast_block(block)
       return block
     self.minted = True  #:p change it to false uwu
     return -1
@@ -319,7 +319,7 @@ class Node:
   #called when a block is received
   #if the block is valid, it validates block and runs transaction_soft for each transaction based on global utxos
   #if the block is invalid it changes nothing and returns false
-  def validate_block(self, B, new = False):
+  def validate_block(self, B, new = False, validate_only = False):
     if not new:
       if not self.minted:
         self.validator = self.Proof_of_Stake()
@@ -354,6 +354,9 @@ class Node:
       self.run_transaction_soft(tx, B.validator)
 
     #at this point we know the block is valid
+    if validate_only:
+      return True
+    
     for tx in B.transactions:
       self.nonces[tx.sender_address.decode()] = tx.nonce
 
