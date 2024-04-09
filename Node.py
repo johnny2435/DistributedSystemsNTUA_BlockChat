@@ -83,7 +83,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(3)
+      time.sleep(0.5)
       s = f.readline()
 
     f.close()
@@ -264,6 +264,8 @@ class Node:
         print("SOFT UTXOS:")
         for tx in self.wallet.utxos_soft:
           tx.print_trans()
+
+        print("Last Block: ", self.chain.get_last_block().to_dict() ,"\n")
         print(co.colored("Validation Error Message END\n", 'red'))
         return False
 
@@ -333,7 +335,6 @@ class Node:
       return False
       
     
-    
     copy_utxos_soft = self.wallet.utxos_soft.copy()
     copy_stakes_soft = self.stakes_soft.copy()
 
@@ -345,6 +346,7 @@ class Node:
     for tx in B.transactions:
       if not self.validate_transaction(tx):
         print(co.colored("[EXIT]: validate_block: invalid transaction\n", 'red'))
+        print("Current Block: ", B.to_dict(), "\n")
         self.wallet.utxos_soft = copy_utxos_soft
         self.stakes_soft = copy_stakes_soft
         return False
