@@ -70,7 +70,7 @@ class Node:
     #s = " "
     s = f.readline()
     while s != "":
-      receiver, message = s.split()
+      receiver, message = s.split(" ", 1)
       receiver_id = receiver[2:]
 
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
