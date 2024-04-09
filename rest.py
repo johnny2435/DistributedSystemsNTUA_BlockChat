@@ -90,7 +90,8 @@ def receive_block():
     if not block_valid:
       myNode.wallet.utxos=[]
       myNode.ring = myNode.initial_ring.copy()
-      myNode.validate_chain(myNode.chain)
+      if not myNode.validate_chain(myNode.chain):
+        print(co.colored("Disaster: Invalid chain", 'red'))
     return 'ok'   #indent if you add lock
 
 
