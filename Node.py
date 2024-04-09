@@ -224,7 +224,7 @@ class Node:
   def validate_transaction(self, T):
     if not T.verify_signature():
       print(co.colored("Error: Wrong signature!\n", 'red'))
-      print(T.to_dict())
+      #print(T.to_dict())
       #print(co.colored("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", 'red'))
       return False
 
@@ -461,6 +461,9 @@ class Node:
         blockchain = self.chain.to_dict()
         requests.post(url_newNode, json=blockchain)
         #time.sleep(2)
-        self.create_transaction(public_key.encode(), "coins", amount=1000.0)
+        if len(self.ring) == CAPACITY:
+          for public_key, value in self.ring.items():
+            if value[0]!=0:
+              self.create_transaction(public_key.encode(), "coins", amount=1000.0)
 
     return
