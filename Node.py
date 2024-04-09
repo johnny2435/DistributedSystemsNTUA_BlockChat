@@ -25,7 +25,7 @@ class Node:
     self.minted = False
     self.stakes_soft = {}
     self.nonces = {}  #pk -> last nonce in block
-    
+    self.initial_ring = {}
     
     if bootstrap:
       self.id = 0
@@ -350,8 +350,13 @@ class Node:
       if not self.validate_transaction(tx):
         print(co.colored("[EXIT]: validate_block: invalid transaction\n", 'red'))
         #print("Current Block: ", B.to_dict(), "\n")
-        self.wallet.utxos_soft = copy_utxos_soft
-        self.stakes_soft = copy_stakes_soft
+
+        self.wallet.utxos=[]
+        self.ring = self.initial_ring.copy()
+        self.validate_chain(self.chain)
+        
+        #self.wallet.utxos_soft = copy_utxos_soft
+        #self.stakes_soft = copy_stakes_soft
         return False
       self.run_transaction_soft(tx, B.validator)
 
