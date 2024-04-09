@@ -120,8 +120,10 @@ def addNode():
         myNode.id = value[0]
       
     print("Bootstrap sent the ring to me, my id is", myNode.id)
-    print("Ring is:", myNode.ring)
-    return 'ok' #??
+    print("Ring is:")
+    for value in myNode.ring.values():
+        print(value)
+    return 'ok'
 
 
 
