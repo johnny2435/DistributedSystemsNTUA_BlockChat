@@ -17,6 +17,8 @@ BOOTSTRAP_URL = 'http://' + Node.BOOTSTRAP_IP + Node.PORT
 
 app = Flask(__name__)
 
+lock = Lock()
+
 #change data to tx
 def decode_transaction(data):
   
@@ -155,8 +157,6 @@ if __name__ == '__main__':
 
   hostname = socket.gethostname()
   IP = socket.gethostbyname(hostname)
-
-  lock = Lock()
   
   if IP == Node.BOOTSTRAP_IP:
     myNode = Node.Node(bootstrap=True, N=5)
