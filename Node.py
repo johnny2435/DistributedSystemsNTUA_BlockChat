@@ -63,7 +63,7 @@ class Node:
     pub_key = {'public_key': self.wallet.get_public_key().decode()}
     if self.id != 0:
       requests.post("http://" + BOOTSTRAP_IP + PORT + "/register", json=pub_key)
-    time.sleep(20 + random.random())
+    time.sleep(20 + random.uniform(0,3))
     if self.id==0:
       if len(self.ring) == CAPACITY:
         for public_key, value in self.ring.items():
@@ -83,7 +83,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(1)
+      time.sleep(3)
       s = f.readline()
 
     f.close()
@@ -329,12 +329,12 @@ class Node:
       return False
       
     
+    
     copy_utxos_soft = self.wallet.utxos_soft.copy()
     copy_stakes_soft = self.stakes_soft.copy()
 
     self.wallet.utxos_soft = self.wallet.utxos.copy()
     self.stakes_soft = {}
-    
     for public_key in self.ring:
       self.stakes_soft[public_key] = self.ring[public_key][2]
 
@@ -403,21 +403,20 @@ class Node:
     transaction_inputs = T.transaction_inputs
     transaction_outputs = T.transaction_outputs
     #print("[ENTER]: run_transaction\n")
-    if T.type_of_transaction == 'coins':
-      for t_in in transaction_inputs:
-        for utxo in self.wallet.utxos_soft.copy():
-          if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
-          and t_in.amount == utxo.amount:
-            print(co.colored("UTXO removed", 'blue'))
-            self.wallet.utxos_soft.remove(utxo)
-            break
-      for t_out in transaction_outputs:
-        if (t_out.amount > 0):
-          self.wallet.utxos_soft.append(t_out)
-      fee = T.amount * 0.03
+    
+    for t_in in transaction_inputs:
+       for utxo in self.wallet.utxos_soft.copy():
+         if t_in.transaction_id == utxo.transaction_id and t_in.address == utxo.address \
+         and t_in.amount == utxo.amount:
+           print(co.colored("UTXO removed", 'blue'))
+           self.wallet.utxos_soft.remove(utxo)
+           break
+           
+    for t_out in transaction_outputs:
+      if (t_out.amount > 0):
+         self.wallet.utxos_soft.append(t_out)
 
-    else:
-      fee = len(T.message)
+    fee = T.amount * 0.03 if T.type_of_transaction == 'coins' else len(T.message)
 
     #find validator's public_address
     if validator is not None and T.sender_address != b'0':
