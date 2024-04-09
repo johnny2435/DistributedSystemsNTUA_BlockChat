@@ -299,8 +299,11 @@ class Node:
     self.validator = self.Proof_of_Stake()
     if self.id == self.validator:
       block = Block.Block(index, time.time(), [], self.id, prevHash)
-      for tx in self.transaction_pool[:CAPACITY]:
+      for i in range(CAPACITY):
+        tx = self.transaction_pool[i]
         block.add_transaction(tx)
+        self.transaction_pool.pop(i)
+        
       self.broadcast_block(block)
       return block
     self.minted = True  #:p change it to false uwu
