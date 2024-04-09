@@ -317,6 +317,7 @@ class Node:
       print(co.colored("[ENTER]: validate_block\n", "green"))
       if self.validator != B.validator:
         print(co.colored("[EXIT]: validate_block: Wrong validator\n", 'red'))
+        print("Expected:", self.validator, "Received:", B.validator)
         return False
 
     copy_utxos_soft = self.wallet.utxos_soft.copy()
