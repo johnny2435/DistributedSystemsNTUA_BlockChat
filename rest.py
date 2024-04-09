@@ -2,7 +2,7 @@ import requests
 import socket
 from flask import Flask, request
 import json
-from threading import Lock
+import threading
 import base64
 from argparse import ArgumentParser  
 import Node
@@ -17,7 +17,7 @@ BOOTSTRAP_URL = 'http://' + Node.BOOTSTRAP_IP + Node.PORT
 
 app = Flask(__name__)
 
-lock = Lock()
+sem = threading.Semaphore()
 
 #change data to tx
 def decode_transaction(data):
@@ -61,13 +61,14 @@ def receive_transaction():
     data = json.loads((request.data).decode())
     tx = decode_transaction(data)
 
-    with lock:
-      if((tx.sender_address.decode() not in myNode.nonces \
+    sem.acquire()
+    if((tx.sender_address.decode() not in myNode.nonces \
          or myNode.nonces[tx.sender_address.decode()] < tx.nonce)\
         and myNode.validate_transaction(tx)):
       
-        myNode.add_transaction_to_pool(tx)
-        myNode.run_transaction_soft(tx)
+      myNode.add_transaction_to_pool(tx)
+      myNode.run_transaction_soft(tx)
+    sem.release()
   
     if len(myNode.transaction_pool) >= Node.CAPACITY:
       myNode.mint_block(myNode.chain.get_last_block().hash()) 
@@ -78,13 +79,14 @@ def receive_transaction():
 
 @app.route('/sendBlock', methods=['POST'])
 def receive_block():
-  with lock:
+    sem.acquire()
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
     if(myNode.validate_block(block)):
       myNode.chain.add_block(block)
-  return 'ok'   #indent if you add lock
+    sem.release()
+    return 'ok'   #indent if you add lock
 
 
 @app.route('/sendBlockchain', methods=['POST'])
