@@ -44,8 +44,9 @@ class Node:
     else:
       self.id = -1
       self.ring = {}
-      run_trans = threading.Thread(target=self.running_node, daemon=True)
-      run_trans.start()
+      
+    run_trans = threading.Thread(target=self.run_trans_from_txt, daemon=True)
+    run_trans.start()
 
   
   def id_to_address(self, id):
@@ -55,6 +56,61 @@ class Node:
     print("Error: id not in ring")
     return
 
+
+  def run_trans_from_txt(self):
+    
+    time.sleep(5)
+    pub_key = {'public_key': self.wallet.get_public_key().decode()}
+    if self.id != 0:
+      requests.post("http://" + BOOTSTRAP_IP + PORT + "/register", json=pub_key)
+    time.sleep(30)
+
+    project_path = "./"
+    f = open(project_path + "5nodes/trans{}.txt".format(self.id), "r")
+    #s = " "
+    s = f.readline()
+    while s != "":
+      receiver, message = s.split()
+      receiver_id = receiver[2:]
+
+      self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
+      time.sleep(0.5)
+      s = f.readline()
+
+    f.close()
+
+  
+  def running_node2(self):
+    
+    time.sleep(2)
+    pub_key = {'public_key': self.wallet.get_public_key().decode()}
+    if self.id != 0:
+      requests.post("http://" + BOOTSTRAP_IP + PORT + "/register", json=pub_key)
+    time.sleep(5)  ####
+
+    receiver_address = self.id_to_address(0)
+    print("UTXOS: ", self.wallet.utxos)
+    for tx in self.wallet.utxos:
+      tx.print_trans()
+    print("SOFT UTXOS: ", self.wallet.utxos_soft)
+    for tx in self.wallet.utxos_soft:
+      tx.print_trans()
+
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+
+    print("Sending 100 BCC to 0")
+    self.create_transaction(receiver_address, "coins", amount=100)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+
+    print("Sending 150 BCC to 1")
+    self.create_transaction(receiver_address, "coins", amount=150)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
+  
   
   def running_node(self):
 
@@ -93,7 +149,13 @@ class Node:
     time.sleep(2)
     print("My balance is now", self.wallet.get_balance())
     print("My soft balance is now", self.wallet.get_balance_soft())
-    project_path = "./"
+
+    receiver_address = self.id_to_address(2)
+    print("Sending 300 BCC to 2")
+    self.create_transaction(receiver_address, "coins", amount=300)
+    time.sleep(2)
+    print("My balance is now", self.wallet.get_balance())
+    print("My soft balance is now", self.wallet.get_balance_soft())
 
   
   #*
@@ -240,14 +302,15 @@ class Node:
   #called when a block is received
   #if the block is valid, it validates block and runs transaction_soft for each transaction based on global utxos
   #if the block is invalid it changes nothing and returns false
-  def validate_block(self, B):
-    if not self.minted:
-      self.validator = self.Proof_of_Stake()
-    self.minted = False
-    print(co.colored("[ENTER]: validate_block\n", "red"))
-    if self.validator != B.validator:
-      print("[EXIT]: validate_block: Wrong validator\n")
-      return False
+  def validate_block(self, B, new = False):
+    if not new:
+      if not self.minted:
+        self.validator = self.Proof_of_Stake()
+      self.minted = False
+      print(co.colored("[ENTER]: validate_block\n", "red"))
+      if self.validator != B.validator:
+        print("[EXIT]: validate_block: Wrong validator\n")
+        return False
 
     copy_utxos_soft = self.wallet.utxos_soft.copy()
     copy_stakes_soft = self.stakes_soft.copy()
@@ -264,7 +327,7 @@ class Node:
         self.wallet.utxos_soft = copy_utxos_soft
         self.stakes_soft = copy_stakes_soft
         return False
-      self.run_transaction_soft(tx, self.validator)
+      self.run_transaction_soft(tx, B.validator)
 
     if self.chain.get_last_block().hash() != B.previous_hash:
       print("[EXIT]: validate_block: prev hash doesn't match\n")
@@ -375,7 +438,7 @@ class Node:
     self.chain.add_block(genesis_block)
 
     for block in chain.blocks[1:]:  #exclude genesis block
-      if not self.validate_block(block):  #block also runs in validate_block
+      if not self.validate_block(block, new = True):  #block also runs in validate_block
         print("[EXIT]: validate_chain: wrong block\n")
         return False
       self.chain.add_block(block)
