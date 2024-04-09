@@ -299,10 +299,11 @@ class Node:
     self.validator = self.Proof_of_Stake()
     if self.id == self.validator:
       block = Block.Block(index, time.time(), [], self.id, prevHash)
-      for i in range(CAPACITY):
-        tx = self.transaction_pool[i]
+      for _ in range(CAPACITY):
+        tx = self.transaction_pool[0]
         block.add_transaction(tx)
-        self.transaction_pool.pop(i)
+        self.transaction_pool.pop(0)
+        
         
       self.broadcast_block(block)
       return block
