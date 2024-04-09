@@ -222,7 +222,8 @@ class Node:
   #*
   def broadcast_transaction(self, tx):
     #print("Created transaction:", tx.to_dict())
-    self.broadcast(tx, 'Transaction')
+    if self.validate_transaction(tx):
+      self.broadcast(tx, 'Transaction')
 
   
   #*
