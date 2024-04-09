@@ -10,7 +10,7 @@ import random
 import termcolor as co
 
 INITIAL_STAKE = 10
-CAPACITY = 2
+CAPACITY = 5
 PORT = ':5000'
 BOOTSTRAP_IP = '192.168.1.1'
 
@@ -200,20 +200,18 @@ class Node:
   def broadcast(self, obj, type):
     dict = obj.to_dict() if type != 'NewNode' else obj
     print("[Broadcast]: Broadcasting " + type + " ...")
-    #print("\t" + type + ": ", dict)
-    print("Ring is ", self.ring, "/n")
     for value in self.ring.values():
       #dict has items of type: {public_key: [id, ip, stake]}
       ip_bc = value[1]
       url = 'http://' + ip_bc + PORT + '/send' + type
-      print("sending to " + ip_bc + PORT)
+      #print("sending to " + ip_bc + PORT)
       
       requests.post(url, json=dict)
 
   
   #*
   def broadcast_transaction(self, tx):
-    print("Created transaction:", tx.to_dict())
+    #print("Created transaction:", tx.to_dict())
     self.broadcast(tx, 'Transaction')
 
   
@@ -227,20 +225,20 @@ class Node:
     if not T.verify_signature():
       print(co.colored("Error: Wrong signature!\n", 'red'))
       print(T.to_dict())
-      print(co.colored("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", 'red'))
+      #print(co.colored("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", 'red'))
       return False
 
     if T.sender_address == T.receiver_address:
-      print("[Transaction]: ERROR: You can't send BCC/messages to yourself")
+      print(co.colored("[Transaction]: ERROR: You can't send BCC/messages to yourself", 'red'))
       return False
     inputs = T.transaction_inputs
     outputs = T.transaction_outputs
 
     if inputs == []:
-      print("[Validation Failed]: You got no inputs!")
+      print(co.colored("[Validation Failed]: You got no inputs!", 'red'))
       return False
 
-    print("SOFT UTXOS: ", self.wallet.utxos_soft)
+    #print("SOFT UTXOS: ", self.wallet.utxos_soft)
     for tx in self.wallet.utxos_soft:
       tx.print_trans()
     for t_in in inputs:
@@ -250,11 +248,10 @@ class Node:
         t_in.address == t_utxo.address and t_in.amount == t_utxo.amount:
           found = True
       if not found:
-        print("\n")
-        print("\t\t[Validation Failed]: Transaction Input didn't match UTXOs")
+        print(co.colored("\t\t[Validation Failed]: Transaction Input didn't match UTXOs", 'red'))
         print("\t\t\tTransaction that didn't match:")
         t_in.print_trans()
-        print("Validation Error Message END\n")
+        print(co.colored("Validation Error Message END\n", 'red'))
         return False
 
     for t_out in outputs:
@@ -278,8 +275,8 @@ class Node:
   def add_transaction_to_pool(
       self, T):  #in rest first validate then add to pool then run soft
     self.transaction_pool.append(T)
-    print('Transaction added to pool')
-    print(T.to_dict())
+    print(co.colored('Transaction added to pool', 'green'))
+    #print(T.to_dict())
     return
 
   
@@ -307,9 +304,9 @@ class Node:
       if not self.minted:
         self.validator = self.Proof_of_Stake()
       self.minted = False
-      print(co.colored("[ENTER]: validate_block\n", "red"))
+      print(co.colored("[ENTER]: validate_block\n", "green"))
       if self.validator != B.validator:
-        print("[EXIT]: validate_block: Wrong validator\n")
+        print(co.colored("[EXIT]: validate_block: Wrong validator\n", 'red'))
         return False
 
     copy_utxos_soft = self.wallet.utxos_soft.copy()
@@ -323,14 +320,14 @@ class Node:
 
     for tx in B.transactions:
       if not self.validate_transaction(tx):
-        print("[EXIT]: validate_block: invalid transaction\n")
+        print(co.colored("[EXIT]: validate_block: invalid transaction\n", 'red'))
         self.wallet.utxos_soft = copy_utxos_soft
         self.stakes_soft = copy_stakes_soft
         return False
       self.run_transaction_soft(tx, B.validator)
 
     if self.chain.get_last_block().hash() != B.previous_hash:
-      print("[EXIT]: validate_block: prev hash doesn't match\n")
+      print(co.colored("[EXIT]: validate_block: prev hash doesn't match\n", 'red'))
       self.wallet.utxos_soft = copy_utxos_soft
       self.stakes_soft = copy_stakes_soft
       return False
@@ -339,7 +336,6 @@ class Node:
     for tx in B.transactions:
       self.nonces[tx.sender_address.decode()] = tx.nonce
 
-    print("Transaction Pool before removing:", self.transaction_pool, "\n")
     for tx in B.transactions:
       #print("Looking for transaction", tx.transaction_id.hexdigest(), "\n")
       for i in range(len(self.transaction_pool)):
@@ -348,20 +344,19 @@ class Node:
           #print("Found transaction\n")
           self.transaction_pool.pop(i)
           break
-    print("Transaction Pool after removing:", self.transaction_pool, "\n")
 
     self.wallet.utxos = self.wallet.utxos_soft.copy()
     for public_key in self.ring:
       self.ring[public_key][2] = self.stakes_soft[public_key]
 
-    print("[EXIT]: validate_block: valid\n")
+    print(co.colored("[EXIT]: validate_block: valid\n", 'green'))
     return True
 
   
   #find a way to save stakes (maybe in ring)
   def Proof_of_Stake(self):
     hash = self.chain.get_last_block().hash()
-    print("\nMy hash is", hash, "\n")
+    #print("\nMy hash is", hash, "\n")
     random.seed(hash)
     total_stakes = sum([v[2] for v in self.ring.values()])
     if total_stakes == 0:
@@ -379,9 +374,8 @@ class Node:
         validator = node_id
         break
     if validator == -1:
-      print("Error: Validator not found")
-    else:
-      print("Validator is", validator)
+      print(co.colored("Error: Validator not found", 'red'))
+    
     return validator
 
   
@@ -394,7 +388,7 @@ class Node:
 
     transaction_inputs = T.transaction_inputs
     transaction_outputs = T.transaction_outputs
-    print("[ENTER]: run_transaction\n")
+    #print("[ENTER]: run_transaction\n")
     if T.type_of_transaction == 'coins':
       for t_in in transaction_inputs:
         for utxo in self.wallet.utxos_soft.copy():
@@ -417,7 +411,7 @@ class Node:
                                          validator_address, fee)
       self.wallet.utxos_soft.append(fee_tx)
 
-    print("[EXIT]: run_transaction\n")
+    #print("[EXIT]: run_transaction\n")
     return
 
   
