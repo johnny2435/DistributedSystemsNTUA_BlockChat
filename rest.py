@@ -1,19 +1,15 @@
 import requests
 import socket
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, request
 import json
-# from flask_cors import CORS
+from threading import Lock
 import base64
-
 from argparse import ArgumentParser  
-
 import Node
 import Blockchain
 import Transaction
-import Wallet
 import Block
 import termcolor as co
-import jsonpickle
 
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
 
@@ -60,6 +56,7 @@ def getBalance():
 
 @app.route('/sendTransaction', methods=['POST'])
 def receive_transaction():
+  with lock:
     data = json.loads((request.data).decode())
     tx = decode_transaction(data)
 
@@ -73,18 +70,19 @@ def receive_transaction():
     if len(myNode.transaction_pool) >= Node.CAPACITY:
       myNode.mint_block(myNode.chain.get_last_block().hash()) 
   
-    return 'ok' 
+  return 'ok' 
 
 
 
 @app.route('/sendBlock', methods=['POST'])
 def receive_block():
+  with lock:
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
     if(myNode.validate_block(block)):
       myNode.chain.add_block(block)
-    return 'ok'
+  return 'ok'
 
 
 @app.route('/sendBlockchain', methods=['POST'])
@@ -157,10 +155,12 @@ if __name__ == '__main__':
 
   hostname = socket.gethostname()
   IP = socket.gethostbyname(hostname)
+
+  lock = Lock()
   
   if IP == Node.BOOTSTRAP_IP:
     myNode = Node.Node(bootstrap=True, N=5)
-    app.run(host=Node.BOOTSTRAP_IP, port=port)
+    app.run(host=Node.BOOTSTRAP_IP, port=port, threaded=True)
   else:
     myNode = Node.Node()
-    app.run(host=IP, port=port)
+    app.run(host=IP, port=port, threaded=True)
