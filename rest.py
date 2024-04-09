@@ -80,7 +80,6 @@ def receive_transaction():
 @app.route('/sendBlock', methods=['POST'])
 def receive_block():
     sem.acquire()
-    print("Blockchain length: ", len(myNode.chain.blocks))
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
@@ -121,7 +120,8 @@ def addNode():
       myNode.stakes_soft[pub_key] = myNode.ring[pub_key][2]
       if(myNode.wallet.public_key.decode() == pub_key):
         myNode.id = value[0]
-      
+
+    myNode.initial_ring = myNode.ring.copy()
     print("Bootstrap sent the ring to me, my id is", myNode.id)
     print("Ring is:")
     for value in myNode.ring.values():
