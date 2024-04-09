@@ -354,9 +354,10 @@ class Node:
       #print("Looking for transaction", tx.transaction_id.hexdigest(), "\n")
       for i in range(len(self.transaction_pool)):
         #print("In pool:", self.transaction_pool[i].transaction_id.hexdigest(), "\n")
-        if self.transaction_pool[i].transaction_id == tx.transaction_id:
+        if self.transaction_pool[i].transaction_id.hexdigest() == tx.transaction_id.hexdigest():
           #print("Found transaction\n")
           self.transaction_pool.pop(i)
+          print(co.colored("Transaction removed from pool", 'blue'))
           break
 
     self.wallet.utxos = self.wallet.utxos_soft.copy()
