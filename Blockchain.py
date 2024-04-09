@@ -1,5 +1,5 @@
 class Blockchain:
-  def __init__(self, capacity):
+  def __init__(self):
       self.blocks = []
 
   def add_block(self, block):
