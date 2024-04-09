@@ -71,7 +71,8 @@ class Node:
             self.create_transaction(public_key.encode(), "coins", amount=1000.0)
       else:
         print(co.colored("Error: Nodes did not join in time", 'red'))
-
+    time.sleep(10)
+    
     project_path = "./"
     f = open(project_path + "5nodes/trans{}.txt".format(self.id), "r")
     #s = " "
