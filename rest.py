@@ -160,7 +160,7 @@ if __name__ == '__main__':
   
   if IP == Node.BOOTSTRAP_IP:
     myNode = Node.Node(bootstrap=True, N=5)
-    app.run(host=Node.BOOTSTRAP_IP, port=port, threaded=True)
+    app.run(host=Node.BOOTSTRAP_IP, port=port)
   else:
     myNode = Node.Node()
-    app.run(host=IP, port=port, threaded=True)
+    app.run(host=IP, port=port)
