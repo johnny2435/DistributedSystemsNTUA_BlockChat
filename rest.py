@@ -83,9 +83,14 @@ def receive_block():
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
-    if(myNode.validate_block(block)):
+    block_valid = myNode.validate_block(block)
+    if block_valid:
       myNode.chain.add_block(block)
     sem.release()
+    if not block_valid:
+      myNode.wallet.utxos=[]
+      myNode.ring = myNode.initial_ring.copy()
+      myNode.validate_chain(myNode.chain)
     return 'ok'   #indent if you add lock
 
 
