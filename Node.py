@@ -261,6 +261,9 @@ class Node:
         print(co.colored("\t\t[Validation Failed]: Transaction Input didn't match UTXOs", 'red'))
         print("\t\t\tTransaction that didn't match:")
         t_in.print_trans()
+        print("SOFT UTXOS:")
+        for tx in self.wallet.utxos_soft:
+          tx.print_trans()
         print(co.colored("Validation Error Message END\n", 'red'))
         return False
 
@@ -339,6 +342,7 @@ class Node:
 
     if self.chain.get_last_block().hash() != B.previous_hash:
       print(co.colored("[EXIT]: validate_block: prev hash doesn't match\n", 'red'))
+      print("Expected:", self.chain.get_last_block().hash(), "Received:", B.previous_hash)
       self.wallet.utxos_soft = copy_utxos_soft
       self.stakes_soft = copy_stakes_soft
       return False
