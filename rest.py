@@ -80,6 +80,7 @@ def receive_transaction():
 @app.route('/sendBlock', methods=['POST'])
 def receive_block():
     sem.acquire()
+    print("Blockchain length: ", len(myNode.chain.blocks))
     data = json.loads((request.data).decode())
     block = decode_block(data)
 
