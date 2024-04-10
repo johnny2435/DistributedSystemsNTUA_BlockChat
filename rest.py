@@ -72,6 +72,13 @@ def receive_transaction():
   
     if len(myNode.transaction_pool) >= Node.CAPACITY:
       myNode.mint_block(myNode.chain.get_last_block().hash()) 
+
+    #if you surpass the block capacity by too much, reset your state: empty pool and set utxos_soft <- utxos
+    if len(myNode.transaction_pool) > 2*Node.CAPACITY:
+      myNode.transaction_pool = []
+      myNode.stakes_soft = {}
+      for pub_key in myNode.ring:
+        myNode.stakes_soft[pub_key] = myNode.ring[pub_key][2]
   
     return 'ok' 
 
