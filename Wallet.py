@@ -9,6 +9,7 @@ class Wallet:
         self.public_key = key.publickey().export_key() #use .decode() to decode it
         self.utxos = []
         self.utxos_soft = []
+        self.utxos_soft_block = []
 
     def get_public_key(self):
         # Return the public key
