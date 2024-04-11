@@ -13,14 +13,14 @@ def balance():
 
 def update_stake(amount):
   url = 'http://' + IP + PORT + '/stake'
-  response = requests.post(url, json={'amount' : float(amount)})
+  response = requests.post(url, json={'amount' : amount})
   print('Stake updated to: ', response.text)
   return amount
 
 def view_block():
-  url = 'http://' + IP + PORT + '/view_block'
+  url = 'http://' + IP + PORT + '/viewBlock'
   response = requests.get(url)
-  return response
+  return response.text
 
 #gia na elegxoume an theloume coins h message 
 def is_number(s):
@@ -30,11 +30,12 @@ def is_number(s):
   except ValueError:
       return False
 
-def send_transaction(receiver_address, content):
+def send_transaction(receiver_id, content):
   url = 'http://' + IP + PORT + '/newTransaction'
-  json = {'receiver_address' : receiver_address, 'content' : content}
+  json = {'receiver_id' : receiver_id, 'content' : content}
   json['type_of_transaction'] = 'coins' if is_number(content) else 'message'
-  return requests.post(url, json).text
+  #return json
+  return requests.post(url, json = json).text
   
 if __name__ == '__main__':
   
@@ -43,7 +44,6 @@ if __name__ == '__main__':
     # exiting python, 0 means "successful termination"
     sys.exit(0)
 
-  print("")
   print("Welcome! Please enter your command or use help to see the available commands.")
 
 
@@ -53,16 +53,10 @@ if __name__ == '__main__':
     if(action == 'balance'):
         balance()
 
-    elif(action == 'stake'):
-        inputs = action.split()
-        if(len(inputs) > 2):
-          print("Too many arguments")
-        update_stake(float(inputs[1]))
-
     elif(action == 'view'):
         print(view_block())
 
-    elif(action[0] == 't'):
+    elif(action.split()[0] == 't'):
         inputs = action.split()
         id = inputs[1] 
         amount = inputs[2]
@@ -72,22 +66,27 @@ if __name__ == '__main__':
         print('Exiting...')
         sys.exit(0)
 
+    elif(action.split()[0] == 'stake'):
+        inputs = action.split()
+        if(len(inputs) > 2):
+          print("Too many arguments")
+        update_stake(inputs[1])
+
     elif(action == 'help'):
         help_str='''
-  HELP\n
-  Available commands:\n
-  1. t <recipient_address> <amount> \n
-  \t--New transaction: send to recipient_address the amount of BBC coins specified by amount.\n
+  Available commands:
+  1. t <recipient_address> <amount>
+  \t--New transaction: send to recipient_address the amount of BBC coins specified by amount.
   2. t <recipient_address> <message>
-  \t--New transaction: send to recipient_address wallet the message speficied.\n
+  \t--New transaction: send to recipient_address wallet the message speficied.
   3. stake <amount>
   \t--Stake: update the stake of the wallet to the amount specified.
-  4. view\n
-  \t--View transactions and validator in the last validated block.\n
-  5. balance\n
-  \t--Show balance: print the balance of the wallet.\n
-  6. exit\n
-  \t--Exit the program.\n
+  4. view
+  \t--View transactions and validator in the last validated block.
+  5. balance
+  \t--Show balance: print the balance of the wallet.
+  6. exit
+  \t--Exit the program.
   '''
         print(help_str)
 
