@@ -76,7 +76,7 @@ class Node:
             self.create_transaction(public_key.encode(), "coins", amount=1000.0)
       else:
         print(co.colored("Error: Nodes did not join in time", 'red'))
-      self.stake(100)
+      #self.stake(100)
     time.sleep(10)
     
     project_path = "./"
@@ -93,7 +93,7 @@ class Node:
 
       print("My balance is:", self.wallet.get_balance())
       self.create_transaction(self.id_to_address(int(receiver_id)), "message", message = message)
-      time.sleep(1)
+      time.sleep(0.5)
       s = f.readline()
       print("Blockchain length: ", len(self.chain.blocks))
 
